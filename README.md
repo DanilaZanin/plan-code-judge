@@ -107,7 +107,7 @@ Other tools by the same author: [kubectl-whydied](https://github.com/DanilaZanin
 
 A hook runs when one of this plugin's agents stops. It appends one JSON line to `runs.jsonl` in the plugin data directory (`${CLAUDE_PLUGIN_DATA}`, under `~/.claude/plugins/data/`), or to `~/.claude/plan-code-judge/runs.jsonl` if that variable is not set. The line has five fields: timestamp, session id, working directory, agent name and verdict. No prompts, no code and no file contents are logged. The log stays on your machine. Claude Code removes the plugin data directory when you uninstall the plugin from its last install location, unless you pass `--keep-data`.
 
-The verdict is read only from the last non-empty line of the agent's answer, and only if it is in the allowed set for that agent. Otherwise it is logged as null.
+The verdict is read only from the last non-empty line of the agent's answer, and only if it is in the allowed set for that agent. Otherwise it is logged as null. When an agent ends its turn with the `SubagentHandback` tool instead of a text message, Claude Code gives the hook an empty answer; the hook then reads the agent transcript (`agent_transcript_path`) and parses the last handback message, or the last assistant text when there is no handback. The transcript format is internal to Claude Code, so if it changes the verdict falls back to null and nothing else breaks.
 
 `/plan-code-judge:stats` runs `scripts/stats.py` (Python 3, standard library) and prints the numbers. The model does not compute them.
 

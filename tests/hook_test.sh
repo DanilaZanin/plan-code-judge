@@ -45,6 +45,33 @@ case_verdict "coder verdict ignored" $K "VERDICT: PASS" None
 case_verdict "coder no verdict" $K "done" None
 case_verdict "foreign agent" Explore "VERDICT: PASS" NOLINE
 
+# agent ended with the SubagentHandback tool: last_assistant_message is empty, the verdict
+# is in the agent transcript (last assistant record, handback message or text block)
+T="$TMP/agent.jsonl"
+send_t() { # AGENT LAST_MESSAGE TRANSCRIPT_PATH
+    python3 -c 'import json,sys; print(json.dumps({"session_id":"s1","cwd":"/x","agent_type":sys.argv[1],"last_assistant_message":sys.argv[2],"agent_transcript_path":sys.argv[3]}))' "$1" "$2" "$3" | sh "$SCRIPT"
+}
+rec() { # TYPE NAME TEXT -> one transcript line with an assistant tool_use or text block
+    python3 -c 'import json,sys
+t,n,x=sys.argv[1:4]
+c={"type":"text","text":x} if t=="text" else {"type":"tool_use","name":n,"input":{"message":x}}
+print(json.dumps({"type":"assistant","message":{"role":"assistant","content":[c]}}))' "$1" "$2" "$3"
+}
+{ echo '{"type":"user","message":{"role":"user","content":"go"}}'; rec text - "VERDICT: FAIL"; rec tool_use Bash "ls"; rec tool_use SubagentHandback "notes${NL}VERDICT: READY"; } > "$T"
+send_t $C "" "$T"; check "handback verdict from transcript" "$(last_verdict)" READY
+send_t $J "" "$T"; check "handback verdict must be in the agent set, earlier text does not count" "$(last_verdict)" None
+{ rec text - "VERDICT: PASS"; rec tool_use SubagentHandback "VERDICT: FAIL"; rec text - "VERDICT: PASS_WITH_NOTES"; } > "$T"
+send_t $J "" "$T"; check "handback beats text blocks" "$(last_verdict)" FAIL
+{ rec tool_use SubagentHandback "VERDICT: PASS_WITH_NOTES"; rec text - "Report handed back."; } > "$T"
+send_t $J "" "$T"; check "text after handback does not hide the verdict" "$(last_verdict)" PASS_WITH_NOTES
+{ echo '[1,2]'; echo 'null'; echo '{"type":"assistant","message":null}'; echo '{"type":"assistant","message":{"content":[1,{"type":"tool_use","name":"SubagentHandback","input":"s"}]}}'; rec tool_use SubagentHandback "VERDICT: PASS"; } > "$T"
+send_t $J "" "$T"; check "odd records are skipped, not fatal" "$(last_verdict)" PASS
+send_t $J "VERDICT: FAIL" "$T"; check "last_assistant_message has priority" "$(last_verdict)" FAIL
+send_t $J "" "$TMP/missing.jsonl"; check "missing transcript gives None" "$(last_verdict)" None
+printf 'garbage\n{"type":"assistant","message":{"content":"str"}}\n' > "$T"
+send_t $J "" "$T"; check "garbage transcript gives None" "$(last_verdict)" None
+send_t $K "" "$T"; check "coder transcript ignored" "$(last_verdict)" None
+
 before=$(lines)
 echo 'not json {' | sh "$SCRIPT"; check "malformed exit 0" "$?" "0"
 check "malformed writes nothing" "$(lines)" "$before"

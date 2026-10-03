@@ -20,12 +20,43 @@ allowed = {
     "plan-code-judge:judge": ("PASS", "PASS_WITH_NOTES", "FAIL", "BLOCKED"),
     "plan-code-judge:critic": ("READY", "REVISE"),
 }.get(agent, ())
-lines = [l.strip() for l in str(d.get("last_assistant_message") or "").splitlines() if l.strip()]
-verdict = None
-if lines:
+def parse(text):
+    lines = [l.strip() for l in str(text or "").splitlines() if l.strip()]
+    if not lines:
+        return None
     m = re.fullmatch(r"VERDICT: ([A-Z_]+)", lines[-1])
-    if m and m.group(1) in allowed:
-        verdict = m.group(1)
+    return m.group(1) if m and m.group(1) in allowed else None
+def from_transcript(path):
+    # When the agent ends with the SubagentHandback tool instead of a text message,
+    # last_assistant_message is empty. The verdict is the final statement of the agent: the
+    # last handback message if there is one (a short text after it must not hide it),
+    # otherwise the last assistant text block. Any surprise gives None.
+    try:
+        last_text = last_handback = None
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except Exception:
+                    continue
+                if not isinstance(r, dict) or r.get("type") != "assistant":
+                    continue
+                msg = r.get("message")
+                content = msg.get("content") if isinstance(msg, dict) else None
+                for c in content if isinstance(content, list) else []:
+                    if not isinstance(c, dict):
+                        continue
+                    if c.get("type") == "text":
+                        last_text = c.get("text")
+                    elif c.get("type") == "tool_use" and c.get("name") == "SubagentHandback":
+                        inp = c.get("input")
+                        last_handback = inp.get("message") if isinstance(inp, dict) else None
+        return parse(last_handback if last_handback is not None else last_text)
+    except Exception:
+        return None
+verdict = parse(d.get("last_assistant_message"))
+if verdict is None and allowed and d.get("agent_transcript_path"):
+    verdict = from_transcript(d["agent_transcript_path"])
 print(json.dumps({
     "ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "session_id": d.get("session_id"),
