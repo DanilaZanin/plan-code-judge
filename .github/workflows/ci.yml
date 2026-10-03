@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: manifests are valid JSON
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+            python3 -m json.tool "$f" > /dev/null
+          done
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/log-run.sh tests/hook_test.sh tests/stats_test.sh
+      - name: hook test
+        run: sh tests/hook_test.sh
+      - name: stats test
+        run: sh tests/stats_test.sh
