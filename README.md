@@ -65,7 +65,7 @@ Allow the commands in the project's `.claude/settings.json`:
 }
 ```
 
-Keep only the commands your project needs. For a headless run, pass the same rule on the command line:
+Keep only the commands your project needs. A rule matches the start of a command. `cd dir && python3 -m pytest` does not match a `python3` rule, so the judge is told to run plain commands from the project directory. For a headless run, pass the same rule on the command line:
 
 ```
 claude -p --permission-mode acceptEdits --allowedTools "Bash(python3:*)" \

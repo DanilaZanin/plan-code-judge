@@ -21,6 +21,7 @@ Limits:
 - Do not run commands that change state outside a temporary directory.
 
 Permissions: if a command is refused because it needs approval, do not work around it. Say in the report which commands were refused. Judge real defects only from what you actually ran or read.
+- Run every command from the current working directory, which is the project. Do not prefix commands with `cd` and do not chain them with `&&`: permission rules match the start of the command, so `cd dir && python3 -m unittest` is refused even when `python3` is allowed. Run one plain command per call.
 - If you ran at least one real check or case, give your verdict on that evidence and list what you could not run under "Not run (permission)".
 - If you could run nothing, do not fail the code. Write "Not run (permission)" with the refused commands and end with BLOCKED.
 
