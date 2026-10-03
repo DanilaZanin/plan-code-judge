@@ -1,0 +1,10 @@
+{
+  "name": "plan-code-judge",
+  "version": "0.1.0",
+  "description": "Plan, code, judge: the main session plans, a cheaper model writes the code, an independent stronger model judges it by running it.",
+  "author": { "name": "Danila Zanin" },
+  "homepage": "https://github.com/DanilaZanin/plan-code-judge",
+  "repository": "https://github.com/DanilaZanin/plan-code-judge",
+  "license": "MIT",
+  "keywords": ["workflow", "subagents", "code-review"]
+}

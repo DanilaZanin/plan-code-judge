@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "^plan-code-judge:(coder|judge|critic)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/log-run.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

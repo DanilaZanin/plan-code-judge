@@ -1,0 +1,12 @@
+{
+  "name": "plan-code-judge",
+  "owner": { "name": "Danila Zanin" },
+  "description": "Marketplace for the plan-code-judge plugin.",
+  "plugins": [
+    {
+      "name": "plan-code-judge",
+      "source": "./",
+      "description": "Plan, code, judge: a cheaper model writes the code, an independent stronger model judges it by running it."
+    }
+  ]
+}
