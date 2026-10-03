@@ -17,6 +17,7 @@ You are the main session: you decide, the subagents work.
    - Delegate to `plan-code-judge:coder` with the approved plan.
    - Delegate to `plan-code-judge:judge` with the plan, the working directory and the coder's report.
    - On `VERDICT: FAIL`, or `VERDICT: PASS_WITH_NOTES` with notes you accept, send the findings back to the coder and judge again. List the notes you reject, with a reason.
+   - On `VERDICT: BLOCKED` the judge could not run checks because of permissions. Do not send it to the coder and do not count a round. Show the user the refused commands, ask them to allow those commands, then judge again.
    - At most 2 rounds. If the second judge run is not PASS, stop and ask the user.
    - Use two coders in parallel only for parts that are independent, each in its own git worktree.
 6. Before you say done, run one fresh check command yourself and read the output.

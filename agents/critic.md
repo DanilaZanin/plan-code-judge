@@ -17,5 +17,6 @@ Look for: wrong assumptions about the existing code, missing failure cases, step
 
 You review once. Do not ask for a second round.
 
-End your answer with exactly one line:
-`VERDICT: READY` or `VERDICT: REVISE`
+The last line of your answer must be exactly one of these, with nothing else on that line and no formatting:
+VERDICT: READY
+VERDICT: REVISE

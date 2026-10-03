@@ -16,17 +16,26 @@ except Exception:
     sys.exit(0)
 if agent not in ("plan-code-judge:coder", "plan-code-judge:judge", "plan-code-judge:critic"):
     sys.exit(0)
-m = re.findall(r"VERDICT:\s*(PASS_WITH_NOTES|PASS|FAIL|READY|REVISE)", str(d.get("last_assistant_message") or ""))
+allowed = {
+    "plan-code-judge:judge": ("PASS", "PASS_WITH_NOTES", "FAIL", "BLOCKED"),
+    "plan-code-judge:critic": ("READY", "REVISE"),
+}.get(agent, ())
+lines = [l.strip() for l in str(d.get("last_assistant_message") or "").splitlines() if l.strip()]
+verdict = None
+if lines:
+    m = re.fullmatch(r"VERDICT: ([A-Z_]+)", lines[-1])
+    if m and m.group(1) in allowed:
+        verdict = m.group(1)
 print(json.dumps({
     "ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "session_id": d.get("session_id"),
     "cwd": d.get("cwd"),
     "agent_type": agent,
-    "verdict": m[-1] if m else None,
+    "verdict": verdict,
 }))
 ' 2>/dev/null | {
     read -r LINE || exit 0
-    mkdir -p "$(dirname "$LOG")" 2>/dev/null || exit 0
-    printf '%s\n' "$LINE" >> "$LOG" 2>/dev/null
-}
+    mkdir -p "$(dirname "$LOG")" || exit 0
+    printf '%s\n' "$LINE" >> "$LOG"
+} 2>/dev/null
 exit 0

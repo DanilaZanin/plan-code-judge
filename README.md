@@ -2,7 +2,7 @@
 
 A Claude Code plugin for one workflow. The main session plans and decides. A cheaper model writes the code. A stronger, independent model judges the result by running it.
 
-The judge never edits. The coder never grades its own work.
+The judge agent has no Edit or Write tools. It has Bash to run checks, and it is told not to change the project. In one test it still left a `__pycache__` directory behind, which is a side effect of running Python tests. The coder never grades its own work.
 
 ## Install
 
@@ -19,8 +19,8 @@ The three commands are namespaced by the plugin name.
 
 1. The main session writes `.ai/state.md`.
 2. The `coder` agent (Sonnet, high effort) writes the code test first and reports real command output.
-3. The `judge` agent (Opus, high effort) runs the checks, tries to break the promise, and ends with `VERDICT: PASS`, `PASS_WITH_NOTES` or `FAIL`.
-4. On FAIL the findings go back to the coder. At most 2 rounds, then the main session asks you.
+3. The `judge` agent (Opus, high effort) runs the checks, tries to break the promise, and ends with `VERDICT: PASS`, `PASS_WITH_NOTES`, `FAIL` or `BLOCKED`.
+4. On FAIL the findings go back to the coder. At most 2 rounds, then the main session asks you. On BLOCKED (the judge could run nothing because of permissions) nothing goes to the coder. The main session shows you the refused commands and asks you to allow them.
 5. The main session runs one fresh check itself before it says done.
 
 `/plan-code-judge:big-task <task>` is for architecture, security, production work and vague requirements.
@@ -32,9 +32,51 @@ The three commands are namespaced by the plugin name.
 
 `/plan-code-judge:stats` summarises the local run log: runs per agent, verdicts, rounds per task, and the share of tasks where the first judge verdict was not PASS.
 
+### Example run
+
+An outline of one real headless run of `/plan-code-judge:task` on a small task ("add `parse_duration` for strings like `1h30m`, with pytest tests") in a throwaway repo:
+
+```
+main     writes .ai/state.md
+coder    (sonnet) writes durations.py and test_durations.py
+judge    (opus)   runs the tests, mutates the code     VERDICT: PASS_WITH_NOTES
+coder    (sonnet) takes the notes, adds a test case
+judge    (opus)   could not run Python (permission)    VERDICT: FAIL
+main     2 rounds used, stops and asks the user
+```
+
+The second FAIL came from missing permissions, not from the code. That case is what `BLOCKED` is for now. See Permissions below.
+
+## Permissions
+
+The judge must run your project's checks. Plugin subagents ignore `permissionMode`, so the judge uses your normal permission rules. Without a rule, a command such as `python3 -m pytest` needs approval. In an interactive session you approve it. In a headless run (`claude -p`) it is refused, and the judge reports `VERDICT: BLOCKED`.
+
+Allow the commands in the project's `.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m pytest:*)",
+      "Bash(npm test:*)",
+      "Bash(go test:*)"
+    ]
+  }
+}
+```
+
+Keep only the commands your project needs. For a headless run, pass the same rule on the command line:
+
+```
+claude -p --permission-mode acceptEdits --allowedTools "Bash(python3:*)" \
+  "/plan-code-judge:task add a function that parses durations, with tests"
+```
+
+The judge also reports what it could not run. A FAIL means a defect it showed with evidence. BLOCKED means it ran nothing.
+
 ## Rules
 
-- The judge runs things. Reading the diff is not a review.
+- The judge runs things. Reading the diff is not a review. If it cannot run anything, it says BLOCKED.
 - Every finding needs evidence: command output, or file:line plus the mechanism.
 - The coder cannot grade itself.
 - At most 2 coder and judge rounds, then a human decides.
@@ -63,9 +105,21 @@ Other tools by the same author: [kubectl-whydied](https://github.com/DanilaZanin
 
 ## Run log and privacy
 
-A hook runs when one of this plugin's agents stops. It appends one JSON line to `${CLAUDE_PLUGIN_DATA}/runs.jsonl`, or to `~/.claude/plan-code-judge/runs.jsonl` if that variable is not set. The line has five fields: timestamp, session id, working directory, agent name and verdict. No prompts, no code and no file contents are logged. The log stays on your machine.
+A hook runs when one of this plugin's agents stops. It appends one JSON line to `runs.jsonl` in the plugin data directory (`${CLAUDE_PLUGIN_DATA}`, under `~/.claude/plugins/data/`), or to `~/.claude/plan-code-judge/runs.jsonl` if that variable is not set. The line has five fields: timestamp, session id, working directory, agent name and verdict. No prompts, no code and no file contents are logged. The log stays on your machine. Claude Code removes the plugin data directory when you uninstall the plugin from its last install location, unless you pass `--keep-data`.
+
+The verdict is read only from the last non-empty line of the agent's answer, and only if it is in the allowed set for that agent. Otherwise it is logged as null.
+
+`/plan-code-judge:stats` runs `scripts/stats.py` (Python 3, standard library) and prints the numbers. The model does not compute them.
 
 The hook needs `python3`. Without it, the hook does nothing and the session is not affected.
+
+## Tests
+
+```
+sh tests/hook_test.sh
+sh tests/stats_test.sh
+shellcheck scripts/log-run.sh tests/*.sh
+```
 
 ## Limits
 

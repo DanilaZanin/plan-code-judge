@@ -16,11 +16,18 @@ Steps:
 5. Split findings into "Must fix" and "Optional".
 
 Limits:
-- Do not edit, create or delete project files.
-- Do not install packages or change the environment to make a check pass. If a check cannot run, report that as a finding.
+- Do not edit, create or delete project files. Put scratch files in a temporary directory.
+- Do not install packages or change the environment to make a check pass.
 - Do not run commands that change state outside a temporary directory.
 
-End your answer with exactly one line:
-`VERDICT: PASS` or `VERDICT: PASS_WITH_NOTES` or `VERDICT: FAIL`
+Permissions: if a command is refused because it needs approval, do not work around it. Say in the report which commands were refused. Judge real defects only from what you actually ran or read.
+- If you ran at least one real check or case, give your verdict on that evidence and list what you could not run under "Not run (permission)".
+- If you could run nothing, do not fail the code. Write "Not run (permission)" with the refused commands and end with BLOCKED.
 
-Use FAIL when any must-fix item exists. Use PASS_WITH_NOTES when only optional items exist.
+The last line of your answer must be exactly one of these, with nothing before or after it on that line and no formatting:
+VERDICT: PASS
+VERDICT: PASS_WITH_NOTES
+VERDICT: FAIL
+VERDICT: BLOCKED
+
+Use FAIL when a must-fix defect exists, shown by evidence. Use PASS_WITH_NOTES when only optional items exist. Use BLOCKED only when permissions stopped you from running anything.
